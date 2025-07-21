@@ -502,7 +502,7 @@ local function showESPMenu()
     -- Элементы меню   espEnabled
     createToggle("Esp", "espEnabled")
     createToggle("Head Hitbox Enlarger", "headHitboxEnlarger")
-    createSlider("Head Hitbox Size", "headHitboxSize", 1, 5, 0.1)
+    createSlider("Head Hitbox Size", "headHitboxSize", 1, 20, 0.1)
     createToggle("Body Hitbox Enlarger", "bodyHitboxEnlarger")
     createSlider("Body Hitbox Size", "bodyHitboxSize", 1,35, 0.1)  
     createToggle("Box", "showBox")
