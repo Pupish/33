@@ -1,6 +1,4 @@
--- // Загрузчик UI-библиотеки (OrionLib)
--- Удалить OrionLib и всё, что с ним связано
--- // Простое меню и ESP/Аимбот для Xeno (Drawing API)
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
@@ -17,7 +15,7 @@ screenGui.Parent = game:GetService("CoreGui")
 -- // Настройки по умолчанию
 local settings = {
     espEnabled = true,
-    aimbotEnabled = false,
+    aimbotEnabled = true,
     aimbotFOV = 500,
     aimbotSmooth = 1,
     aimbotKey = Enum.KeyCode.E,
@@ -47,7 +45,7 @@ local settings = {
     chamsR = 255,
     chamsG = 0,
     chamsB = 255,
-    skeletonEnabled = false,
+    skeletonEnabled = true,
     aimbotLead = 0,
     aimbotSensitivity = 2,
     aimbotInstant = true,
