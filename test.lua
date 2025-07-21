@@ -187,6 +187,9 @@ function ClearESP()
         for _,obj in pairs(v) do
             if obj and obj.Remove then obj:Remove() end
         end
+        if v.healthBarBg and v.healthBarBg.Remove then
+            v.healthBarBg:Remove()
+        end
     end
     espObjects = {}
 end
@@ -204,10 +207,13 @@ function DrawESP(player)
     boxOutline.Color = Color3.fromRGB(0,255,0)
     boxOutline.Thickness = 2
     boxOutline.Filled = false
-    local healthBar = Drawing.new("Line")
+    -- Новый филбокс для HP
+    local healthBar = Drawing.new("Square")
     healthBar.Visible = false
     healthBar.Color = Color3.fromRGB(255,0,0)
-    healthBar.Thickness = 4
+    healthBar.Thickness = 0
+    healthBar.Filled = true
+    healthBar.Transparency = 0.18 -- почти непрозрачный
     local nameText = Drawing.new("Text")
     nameText.Visible = false
     nameText.Size = 16
@@ -748,26 +754,34 @@ RunService.RenderStepped:Connect(function()
                     box.Visible = true
                     boxOutline.Visible = true
                     box.Size = Vector2.new(sizeX, sizeY)
-                        box.Position = Vector2.new(centerX - sizeX/2, centerY - sizeY/2)
+                    box.Position = Vector2.new(centerX - sizeX/2, centerY - sizeY/2)
                     boxOutline.Size = box.Size
                     boxOutline.Position = box.Position
                 else
                     box.Visible = false
                     boxOutline.Visible = false
                 end
-                -- Полоска здоровья
+                -- Новый филбокс HP
                 if settings.showHealth then
                     healthBar.Visible = true
-                        local hum = player.Character:FindFirstChild("Humanoid")
-                        local healthPerc = hum and math.clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1) or 1
-                        local barHeight = math.max(sizeY, 20)
-                        healthBar.From = Vector2.new(centerX - sizeX/2 - 10, centerY - barHeight/2)
-                        healthBar.To = Vector2.new(centerX - sizeX/2 - 10, centerY - barHeight/2 + barHeight * healthPerc)
-                        healthBar.Thickness = 8
-                        healthBar.Transparency = 0
-                        healthBar.Color = Color3.fromRGB(255 - (255 * healthPerc), 255 * healthPerc, 40)
+                    local hum = player.Character:FindFirstChild("Humanoid")
+                    local healthPerc = hum and math.clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1) or 1
+                    local barHeight = math.max(sizeY, 20)
+                    local barWidth = 5 -- уменьшено с 8 до 5
+                    local barX = centerX - sizeX/2 - barWidth - 6 -- чуть больше отступ
+                    local barY = centerY - barHeight/2
+                   
+                    healthBar.Visible = true
+                    healthBar.Size = Vector2.new(barWidth, barHeight * healthPerc)
+                    healthBar.Position = Vector2.new(barX, barY + barHeight * (1 - healthPerc))
+                    -- Более яркий цвет HP-бара
+                    healthBar.Color = Color3.fromRGB(255, math.floor(255 * healthPerc), 0)
+                    healthBar.Transparency = 1
                 else
                     healthBar.Visible = false
+                    if espObjects[player].healthBarBg then
+                        espObjects[player].healthBarBg.Visible = false
+                    end
                 end
                     -- Имя и дистанция (центрирование, выше головы)
                 if settings.showName then
@@ -810,6 +824,10 @@ RunService.RenderStepped:Connect(function()
             if not player.Parent or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or not player.Character:FindFirstChild("Humanoid") or player.Character.Humanoid.Health <= 0 then
                 for _,obj in pairs(objs) do
                     if obj and obj.Remove then obj:Remove() end
+                end
+                -- Удаляем фон полоски HP, если есть
+                if objs.healthBarBg and objs.healthBarBg.Remove then
+                    objs.healthBarBg:Remove()
                 end
                 espObjects[player] = nil
             end
