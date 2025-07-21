@@ -21,7 +21,7 @@ local settings = {
         aimbotFOV = 125,
         aimbotTarget = "Body",
         aimbotSmooth = 1,
-        aimbotKey = {type = "KeyCode", value = Enum.KeyCode.E},
+        aimbotKey = {type = "KeyCode", value = Enum.KeyCode.V},
     showBox = false,
     showHealth = true,
     showDistance = true,
@@ -776,7 +776,7 @@ RunService.RenderStepped:Connect(function()
                     healthBar.Position = Vector2.new(barX, barY + barHeight * (1 - healthPerc))
                     -- Более яркий цвет HP-бара
                     healthBar.Color = Color3.fromRGB(255, math.floor(255 * healthPerc), 0)
-                    healthBar.Transparency = 1
+                    healthBar.Transparency = 0
                 else
                     healthBar.Visible = false
                     if espObjects[player].healthBarBg then
