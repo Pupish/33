@@ -213,7 +213,7 @@ function DrawESP(player)
     healthBar.Color = Color3.fromRGB(255,0,0)
     healthBar.Thickness = 0
     healthBar.Filled = true
-    healthBar.Transparency = 0.18 -- почти непрозрачный
+    healthBar.Transparency = 0.1
     local nameText = Drawing.new("Text")
     nameText.Visible = false
     nameText.Size = 16
@@ -776,7 +776,7 @@ RunService.RenderStepped:Connect(function()
                     healthBar.Position = Vector2.new(barX, barY + barHeight * (1 - healthPerc))
                     -- Более яркий цвет HP-бара
                     healthBar.Color = Color3.fromRGB(255, math.floor(255 * healthPerc), 0)
-                    healthBar.Transparency = 0
+                    healthBar.Transparency = 1
                 else
                     healthBar.Visible = false
                     if espObjects[player].healthBarBg then
