@@ -943,7 +943,7 @@ RunService.RenderStepped:Connect(function()
     -- Реакция на включение/выключение полёта
     UIS.InputBegan:Connect(function(input, gpe)
         if gpe then return end
-        if input.KeyCode == settings.flyKey.value and settings.flyEnabled then
+        if input.KeyCode == settings.flyKey.value then
             settings.flyEnabled = not settings.flyEnabled
             if settings.flyEnabled then
                 flySpeed = settings.flySpeed
