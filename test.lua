@@ -33,6 +33,10 @@ local settings = {
     headHitboxSize = 5,
     bodyHitboxEnlarger = false,
     bodyHitboxSize = 5,
+    spinbotEnabled = false,
+    spinbotSpeed = 5,
+    coreblockHitboxEnlarger = false,
+    coreblockHitboxSize = 5,
 }
 
 local menuOpen = false
@@ -98,7 +102,7 @@ end
 -- // Для аимбота: Raycast проверка видимости цели
 -- (удалить функцию isTargetVisible и вызовы)
 
--- // Аимбот с учетом увеличенного хитбокса
+-- // Аимбот с учетом увеличенного хитбокса (теперь всегда в центр головы/тела)
 RunService.RenderStepped:Connect(function()
     if settings.aimbotEnabled and aiming then
         local target = getClosestPlayer()
@@ -107,28 +111,11 @@ RunService.RenderStepped:Connect(function()
             if part then
                 local aimPos = part.Position
                 if settings.aimbotTarget == "Head" and part:IsA("BasePart") then
-                    local scale = settings.headHitboxScale or 1
                     local offset = settings.headHitboxOffset
-                    local size = part.Size * scale
-                    -- Рандомная точка внутри увеличенного хитбокса
                     aimPos = part.Position + Vector3.new(0, part.Size.Y/2 + offset, 0)
-                    if scale > 1 then
-                        local rx = (math.random() - 0.5) * size.X
-                        local ry = (math.random() - 0.5) * size.Y
-                        local rz = (math.random() - 0.5) * size.Z
-                        aimPos = aimPos + Vector3.new(rx, ry, rz)
-                    end
                 elseif settings.aimbotTarget == "HumanoidRootPart" and part:IsA("BasePart") then
-                    local scale = settings.bodyHitboxScale or 1
                     local offset = settings.bodyHitboxOffset
-                    local size = part.Size * scale
                     aimPos = part.Position + Vector3.new(0, offset, 0)
-                    if scale > 1 then
-                        local rx = (math.random() - 0.5) * size.X
-                        local ry = (math.random() - 0.5) * size.Y
-                        local rz = (math.random() - 0.5) * size.Z
-                        aimPos = aimPos + Vector3.new(rx, ry, rz)
-                    end
                 end
                 local pos = Camera:WorldToViewportPoint(aimPos)
                 local mousePos = Vector2.new(Mouse.X, Mouse.Y)
@@ -280,7 +267,61 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- // UI-меню ESP/Аимбота (добавить toggle и слайдер для bodyHitboxEnlarger)
+-- // Spinbot (вращение персонажа)
+RunService.RenderStepped:Connect(function(dt)
+    if settings.spinbotEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(settings.spinbotSpeed), 0)
+    end
+end)
+
+-- // Увеличение хитбокса Coreblock (LowerTorso/UpperTorso) для других игроков
+local defaultCoreblockProps = {}
+RunService.RenderStepped:Connect(function()
+    if settings.coreblockHitboxEnlarger then
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character then
+                local torso = v.Character:FindFirstChild("LowerTorso") or v.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    pcall(function()
+                        if not defaultCoreblockProps[torso] then
+                            defaultCoreblockProps[torso] = {
+                                Size = torso.Size,
+                                Transparency = torso.Transparency,
+                                BrickColor = torso.BrickColor,
+                                Material = torso.Material,
+                                CanCollide = torso.CanCollide
+                            }
+                        end
+                        torso.Size = Vector3.new(settings.coreblockHitboxSize, settings.coreblockHitboxSize, settings.coreblockHitboxSize)
+                        torso.Transparency = 0.7
+                        torso.BrickColor = BrickColor.new("Lime green")
+                        torso.Material = Enum.Material.Neon
+                        torso.CanCollide = false
+                    end)
+                end
+            end
+        end
+    else
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character then
+                local torso = v.Character:FindFirstChild("LowerTorso") or v.Character:FindFirstChild("UpperTorso")
+                if torso and defaultCoreblockProps[torso] then
+                    pcall(function()
+                        torso.Size = defaultCoreblockProps[torso].Size
+                        torso.Transparency = defaultCoreblockProps[torso].Transparency
+                        torso.BrickColor = defaultCoreblockProps[torso].BrickColor
+                        torso.Material = defaultCoreblockProps[torso].Material
+                        torso.CanCollide = defaultCoreblockProps[torso].CanCollide
+                    end)
+                    defaultCoreblockProps[torso] = nil
+                end
+            end
+        end
+    end
+end)
+
+-- // UI-меню ESP/Аимбота (добавить spinbot)
 local espMenu = nil
 local function showESPMenu()
     if espMenu then espMenu:Destroy() espMenu = nil end
@@ -502,13 +543,17 @@ local function showESPMenu()
     -- Элементы меню   espEnabled
     createToggle("Esp", "espEnabled")
     createToggle("Head Hitbox Enlarger", "headHitboxEnlarger")
-    createSlider("Head Hitbox Size", "headHitboxSize", 1, 20, 0.1)
+    createSlider("Head Hitbox Size", "headHitboxSize", 1, 5, 0.1)
     createToggle("Body Hitbox Enlarger", "bodyHitboxEnlarger")
     createSlider("Body Hitbox Size", "bodyHitboxSize", 1,35, 0.1)  
     createToggle("Box", "showBox")
     createToggle("HealthBar", "showHealth")
     createToggle("Distance", "showDistance")
     createToggle("Name", "showName")
+    createToggle("Spinbot", "spinbotEnabled")
+    createSlider("Spin Speed", "spinbotSpeed", 1, 50, 1)
+    createToggle("Coreblock Hitbox Enlarger", "coreblockHitboxEnlarger")
+    createSlider("Coreblock Hitbox Size", "coreblockHitboxSize", 2, 25, 0.1)
 end
 
 -- Открытие/закрытие меню по RightShift
