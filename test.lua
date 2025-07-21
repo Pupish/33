@@ -16,10 +16,10 @@ screenGui.Parent = game:GetService("CoreGui")
 
 -- // Настройки по умолчанию
 local settings = {
-    espEnabled = false,
+    espEnabled = true,
     aimbotEnabled = false,
-    aimbotFOV = 100,
-    aimbotSmooth = 0.2,
+    aimbotFOV = 500,
+    aimbotSmooth = 1,
     aimbotKey = Enum.KeyCode.E,
     showBox = true,
     showHealth = true,
@@ -37,8 +37,8 @@ local settings = {
     spinbotSpeed = 5,
     coreblockHitboxEnlarger = false,
     coreblockHitboxSize = 5,
-    flyEnabled = false,
-    flySpeed = 50,
+    flyEnabled = true,
+    flySpeed = 100,
     noSpread = false,
     noRecoil = false,
     rivalsHitboxEnlarger = false,
@@ -50,6 +50,7 @@ local settings = {
     skeletonEnabled = false,
     aimbotLead = 0,
     aimbotSensitivity = 2,
+    aimbotInstant = true,
 }
 
 local menuOpen = false
@@ -138,8 +139,14 @@ RunService.RenderStepped:Connect(function()
                 if aimPos then
                     local aim2d = Camera:WorldToViewportPoint(aimPos)
                     local mouseLocation = UIS:GetMouseLocation()
-                    local moveX = (aim2d.X - mouseLocation.X) / (settings.aimbotSensitivity or 2)
-                    local moveY = (aim2d.Y - mouseLocation.Y) / (settings.aimbotSensitivity or 2)
+                    local moveX, moveY
+                    if settings.aimbotInstant then
+                        moveX = aim2d.X - mouseLocation.X
+                        moveY = aim2d.Y - mouseLocation.Y
+                    else
+                        moveX = (aim2d.X - mouseLocation.X) / (settings.aimbotSensitivity or 2)
+                        moveY = (aim2d.Y - mouseLocation.Y) / (settings.aimbotSensitivity or 2)
+                    end
                     pcall(function() mousemoverel(moveX, moveY) end)
                 end
             end
@@ -658,26 +665,16 @@ local function showESPMenu()
     createToggle("Box", "showBox")
     createToggle("HealthBar", "showHealth")
     createToggle("Distance", "showDistance")
-    createToggle("Name", "showName")
-    createToggle("Head Hitbox Enlarger", "headHitboxEnlarger")
-    createSlider("Head Hitbox Size", "headHitboxSize", 1, 5, 0.1)
-    createToggle("Body Hitbox Enlarger", "bodyHitboxEnlarger")
-    createSlider("Body Hitbox Size", "bodyHitboxSize", 1,35, 0.1)
-    createToggle("Coreblock Hitbox Enlarger", "coreblockHitboxEnlarger")
-    createSlider("Coreblock Hitbox Size", "coreblockHitboxSize", 2, 25, 0.1)
+    createToggle("Name", "showName") 
     createToggle("Fly", "flyEnabled")
-    createSlider("Fly Speed", "flySpeed", 10, 200, 1)
-    createToggle("No Spread", "noSpread")
-    createToggle("No Recoil", "noRecoil")
-    createToggle("Spinbot", "spinbotEnabled")
-    createSlider("Spin Speed", "spinbotSpeed", 1, 50, 1)
+    createSlider("Fly Speed", "flySpeed", 10, 200, 1)  
     createToggle("Chams", "chamsEnabled")
     createSlider("Chams R", "chamsR", 0, 255, 1)
     createSlider("Chams G", "chamsG", 0, 255, 1)
     createSlider("Chams B", "chamsB", 0, 255, 1)
-    createToggle("Skeleton ESP", "skeletonEnabled")
-    createSlider("Aimbot Lead", "aimbotLead", 0, 30, 1)
+    createToggle("Skeleton ESP", "skeletonEnabled") 
     createSlider("Aimbot Sensitivity", "aimbotSensitivity", 1, 10, 1)
+    createToggle("Instant Aim", "aimbotInstant")
 end
 
 -- Открытие/закрытие меню по RightShift
