@@ -52,7 +52,7 @@ local settings = {
         aimbotLead = 0,
         aimbotSensitivity = 2,
         aimbotInstant = true,
-        espFont = 2, -- 0: UI, 1: System, 2: Plex, 3: Monospace
+        espFont = 0, -- 0: UI, 1: System, 2: Plex, 3: Monospace
 }
 
 local menuOpen = false
