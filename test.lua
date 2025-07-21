@@ -18,8 +18,8 @@ local Camera = workspace.CurrentCamera
 local settings = {
         espEnabled = true,
         aimbotEnabled = true,
-        aimbotFOV = 500,
-        aimbotTarget = "Head",
+        aimbotFOV = 125,
+        aimbotTarget = "Body",
         aimbotSmooth = 1,
         aimbotKey = {type = "KeyCode", value = Enum.KeyCode.E},
     showBox = false,
@@ -40,6 +40,7 @@ local settings = {
         coreblockHitboxSize = 5,
         flyEnabled = true,
         flySpeed = 100,
+        flyKey = {type = "KeyCode", value = Enum.KeyCode.F},
         noSpread = false,
         noRecoil = false,
         rivalsHitboxEnlarger = false,
@@ -48,10 +49,10 @@ local settings = {
         chamsR = 255,
         chamsG = 255,
         chamsB = 255,
-        skeletonEnabled = true,
+        skeletonEnabled = false,
         aimbotLead = 0,
         aimbotSensitivity = 2,
-        aimbotInstant = true,
+        aimbotInstant = false,
         espFont = 0, -- 0: UI, 1: System, 2: Plex, 3: Monospace
 }
 
@@ -677,8 +678,7 @@ end
         -- Элементы меню   espEnabled
         createToggle("Esp", "espEnabled")
         createToggle("Aimbot", "aimbotEnabled")
-        createSlider("FOV", "aimbotFOV", 30, 500, 5)
-        createSlider("Smooth", "aimbotSmooth", 0.1, 1,0.1)
+        createSlider("FOV", "aimbotFOV", 30, 500, 1) 
         createKeyBind("Aimbot Key", "aimbotKey")
         createDropdown("Aimbot Target", "aimbotTarget", {"Head", "Body", "Legs"})
         createToggle("Box", "showBox")
@@ -686,7 +686,8 @@ end
         createToggle("Distance", "showDistance")
         createToggle("Name", "showName") 
         createToggle("Fly", "flyEnabled")
-        createSlider("Fly Speed", "flySpeed", 10, 200, 1)  
+        createSlider("Fly Speed", "flySpeed", 10, 200, 1)
+        createKeyBind("fly Key", "flyKey")
         createToggle("Chams", "chamsEnabled")
         createSlider("Chams R", "chamsR", 0, 255, 1)
         createSlider("Chams G", "chamsG", 0, 255, 1)
@@ -942,7 +943,7 @@ RunService.RenderStepped:Connect(function()
     -- Реакция на включение/выключение полёта
     UIS.InputBegan:Connect(function(input, gpe)
         if gpe then return end
-        if input.KeyCode == Enum.KeyCode.F and settings.flyEnabled then
+        if input.KeyCode == settings.flyKey.value and settings.flyEnabled then
             settings.flyEnabled = not settings.flyEnabled
             if settings.flyEnabled then
                 flySpeed = settings.flySpeed
