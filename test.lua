@@ -37,6 +37,19 @@ local settings = {
     spinbotSpeed = 5,
     coreblockHitboxEnlarger = false,
     coreblockHitboxSize = 5,
+    flyEnabled = false,
+    flySpeed = 50,
+    noSpread = false,
+    noRecoil = false,
+    rivalsHitboxEnlarger = false,
+    rivalsHitboxSize = 5,
+    chamsEnabled = false,
+    chamsR = 255,
+    chamsG = 0,
+    chamsB = 255,
+    skeletonEnabled = false,
+    aimbotLead = 0,
+    aimbotSensitivity = 2,
 }
 
 local menuOpen = false
@@ -45,7 +58,7 @@ local menuItems = {
     {name = "ESP", key = "espEnabled", type = "bool"},
     {name = "Aimbot", key = "aimbotEnabled", type = "bool"},
     {name = "FOV", key = "aimbotFOV", type = "int", min = 30, max = 300, step = 5},
-    {name = "Smooth", key = "aimbotSmooth", type = "float", min = 0.05, max = 1, step = 0.01},
+    {name = "Smooth", key = "aimbotSmooth", type = "float", min = 0.001, max = 1, step = 0.001},
     {name = "Aimbot Key", key = "aimbotKey", type = "key"},
     {name = "Box", key = "showBox", type = "bool"},
     {name = "HealthBar", key = "showHealth", type = "bool"},
@@ -88,13 +101,20 @@ local function getClosestPlayer()
     return closest
 end
 
+-- // getTargetPart с выбором Head, Body, Legs
 local function getTargetPart(char)
     if settings.aimbotTarget == "Head" and char:FindFirstChild("Head") then
         return char.Head
-    elseif char:FindFirstChild("HumanoidRootPart") then
+    elseif settings.aimbotTarget == "Body" and char:FindFirstChild("HumanoidRootPart") then
         return char.HumanoidRootPart
-    elseif char:FindFirstChild("Torso") then
-        return char.Torso
+    elseif settings.aimbotTarget == "Legs" then
+        if char:FindFirstChild("LeftLowerLeg") then
+            return char.LeftLowerLeg
+        elseif char:FindFirstChild("LowerTorso") then
+            return char.LowerTorso
+        elseif char:FindFirstChild("RightLowerLeg") then
+            return char.RightLowerLeg
+        end
     end
     return nil
 end
@@ -109,19 +129,19 @@ RunService.RenderStepped:Connect(function()
         if target and target.Character then
             local part = getTargetPart(target.Character)
             if part then
-                local aimPos = part.Position
-                if settings.aimbotTarget == "Head" and part:IsA("BasePart") then
-                    local offset = settings.headHitboxOffset
-                    aimPos = part.Position + Vector3.new(0, part.Size.Y/2 + offset, 0)
-                elseif settings.aimbotTarget == "HumanoidRootPart" and part:IsA("BasePart") then
-                    local offset = settings.bodyHitboxOffset
-                    aimPos = part.Position + Vector3.new(0, offset, 0)
+                local aimPos
+                if part:IsA("Bone") then
+                    aimPos = getWorldPosition(part)
+                elseif part:IsA("BasePart") then
+                    aimPos = part.Position
                 end
-                local pos = Camera:WorldToViewportPoint(aimPos)
-                local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-                local targetPos = Vector2.new(pos.X, pos.Y)
-                local move = (targetPos - mousePos) * settings.aimbotSmooth
-                pcall(function() mousemoverel(move.X, move.Y) end)
+                if aimPos then
+                    local aim2d = Camera:WorldToViewportPoint(aimPos)
+                    local mouseLocation = UIS:GetMouseLocation()
+                    local moveX = (aim2d.X - mouseLocation.X) / (settings.aimbotSensitivity or 2)
+                    local moveY = (aim2d.Y - mouseLocation.Y) / (settings.aimbotSensitivity or 2)
+                    pcall(function() mousemoverel(moveX, moveY) end)
+                end
             end
         end
     end
@@ -178,7 +198,12 @@ function DrawESP(player)
     distText.Size = 14
     distText.Color = Color3.fromRGB(0,255,255)
     distText.Outline = true
-    espObjects[player] = {box, boxOutline, healthBar, nameText, distText}
+    local hpText = Drawing.new("Text")
+    hpText.Visible = false
+    hpText.Size = 14
+    hpText.Color = Color3.fromRGB(255,100,100)
+    hpText.Outline = true
+    espObjects[player] = {box, boxOutline, healthBar, nameText, distText, hpText}
 end
 
 -- // Увеличение хитбокса головы (Head) и тела (HumanoidRootPart) для других игроков
@@ -321,6 +346,82 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+local function isEnemy(player)
+    return player.Team ~= LocalPlayer.Team
+end
+
+local defaultRivalsHeadProps = {}
+RunService.RenderStepped:Connect(function()
+    if settings.rivalsHitboxEnlarger then
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and isEnemy(v) and v.Character and v.Character:FindFirstChild("Head") then
+                local head = v.Character.Head
+                pcall(function()
+                    if not defaultRivalsHeadProps[head] then
+                        defaultRivalsHeadProps[head] = {
+                            Size = head.Size,
+                            Transparency = head.Transparency,
+                            BrickColor = head.BrickColor,
+                            Material = head.Material,
+                            CanCollide = head.CanCollide
+                        }
+                    end
+                    head.Size = Vector3.new(settings.rivalsHitboxSize, settings.rivalsHitboxSize, settings.rivalsHitboxSize)
+                    head.Transparency = 0.7
+                    head.BrickColor = BrickColor.new("Lime green")
+                    head.Material = Enum.Material.Neon
+                    head.CanCollide = false
+                end)
+            end
+        end
+    else
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                local head = v.Character.Head
+                if defaultRivalsHeadProps[head] then
+                    pcall(function()
+                        head.Size = defaultRivalsHeadProps[head].Size
+                        head.Transparency = defaultRivalsHeadProps[head].Transparency
+                        head.BrickColor = defaultRivalsHeadProps[head].BrickColor
+                        head.Material = defaultRivalsHeadProps[head].Material
+                        head.CanCollide = defaultRivalsHeadProps[head].CanCollide
+                    end)
+                    defaultRivalsHeadProps[head] = nil
+                end
+            end
+        end
+    end
+end)
+
+-- // Чамсы (Highlight)
+local chamsObjects = {}
+RunService.RenderStepped:Connect(function()
+    local chamsColor = Color3.fromRGB(settings.chamsR, settings.chamsG, settings.chamsB)
+    for _,v in ipairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character then
+            if settings.chamsEnabled then
+                if not chamsObjects[v] or not chamsObjects[v].Parent then
+                    local h = Instance.new("Highlight")
+                    h.FillColor = chamsColor
+                    h.OutlineColor = Color3.new(0,0,0)
+                    h.OutlineTransparency = 0.7
+                    h.FillTransparency = 0.2
+                    h.Parent = v.Character
+                    chamsObjects[v] = h
+                else
+                    chamsObjects[v].FillColor = chamsColor
+                end
+            elseif chamsObjects[v] then
+                chamsObjects[v]:Destroy()
+                chamsObjects[v] = nil
+            end
+        elseif chamsObjects[v] then
+            chamsObjects[v]:Destroy()
+            chamsObjects[v] = nil
+        end
+    end
+end)
+
 -- // UI-меню ESP/Аимбота (добавить spinbot)
 local espMenu = nil
 local function showESPMenu()
@@ -383,18 +484,25 @@ local function showESPMenu()
     end)
 
     -- Контейнер для элементов
-    local content = Instance.new("Frame")
+    local content = Instance.new("ScrollingFrame")
     content.Size = UDim2.new(1, 0, 0.87, 0)
     content.Position = UDim2.new(0, 0, 0.13, 0)
     content.BackgroundTransparency = 1
     content.Parent = espMenu
     content.ZIndex = 201
+    content.CanvasSize = UDim2.new(0, 0, 0, 0)
+    content.ScrollBarThickness = 8
+    content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    content.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 
     local layout = Instance.new("UIListLayout")
     layout.Padding = UDim.new(0, 10)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = content
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    end)
 
     -- Универсальный Toggle
     local function createToggle(text, settingKey)
@@ -542,18 +650,34 @@ local function showESPMenu()
 
     -- Элементы меню   espEnabled
     createToggle("Esp", "espEnabled")
-    createToggle("Head Hitbox Enlarger", "headHitboxEnlarger")
-    createSlider("Head Hitbox Size", "headHitboxSize", 1, 5, 0.1)
-    createToggle("Body Hitbox Enlarger", "bodyHitboxEnlarger")
-    createSlider("Body Hitbox Size", "bodyHitboxSize", 1,35, 0.1)  
+    createToggle("Aimbot", "aimbotEnabled")
+    createSlider("FOV", "aimbotFOV", 30, 500, 5)
+    createSlider("Smooth", "aimbotSmooth", 0.1, 1,0.1)
+    createKeyBind("Aimbot Key", "aimbotKey")
+    createDropdown("Aimbot Target", "aimbotTarget", {"Head", "Body", "Legs"})
     createToggle("Box", "showBox")
     createToggle("HealthBar", "showHealth")
     createToggle("Distance", "showDistance")
     createToggle("Name", "showName")
-    createToggle("Spinbot", "spinbotEnabled")
-    createSlider("Spin Speed", "spinbotSpeed", 1, 50, 1)
+    createToggle("Head Hitbox Enlarger", "headHitboxEnlarger")
+    createSlider("Head Hitbox Size", "headHitboxSize", 1, 5, 0.1)
+    createToggle("Body Hitbox Enlarger", "bodyHitboxEnlarger")
+    createSlider("Body Hitbox Size", "bodyHitboxSize", 1,35, 0.1)
     createToggle("Coreblock Hitbox Enlarger", "coreblockHitboxEnlarger")
     createSlider("Coreblock Hitbox Size", "coreblockHitboxSize", 2, 25, 0.1)
+    createToggle("Fly", "flyEnabled")
+    createSlider("Fly Speed", "flySpeed", 10, 200, 1)
+    createToggle("No Spread", "noSpread")
+    createToggle("No Recoil", "noRecoil")
+    createToggle("Spinbot", "spinbotEnabled")
+    createSlider("Spin Speed", "spinbotSpeed", 1, 50, 1)
+    createToggle("Chams", "chamsEnabled")
+    createSlider("Chams R", "chamsR", 0, 255, 1)
+    createSlider("Chams G", "chamsG", 0, 255, 1)
+    createSlider("Chams B", "chamsB", 0, 255, 1)
+    createToggle("Skeleton ESP", "skeletonEnabled")
+    createSlider("Aimbot Lead", "aimbotLead", 0, 30, 1)
+    createSlider("Aimbot Sensitivity", "aimbotSensitivity", 1, 10, 1)
 end
 
 -- Открытие/закрытие меню по RightShift
@@ -596,7 +720,7 @@ RunService.RenderStepped:Connect(function()
                 centerX = (top2d.X + bottom2d.X) / 2
                 centerY = (top2d.Y + bottom2d.Y) / 2
             end
-            local box, boxOutline, healthBar, nameText, distText = unpack(espObjects[player])
+            local box, boxOutline, healthBar, nameText, distText, hpText = unpack(espObjects[player])
             if onScreen then
                 -- Бокс
                 if settings.showBox then
@@ -635,13 +759,20 @@ RunService.RenderStepped:Connect(function()
                         distText.Text = string.format("%.0fм", dist)
                         centerText(distText, headPos.X, headPos.Y - 52)
                         centerText(nameText, headPos.X, headPos.Y - 32)
+                        -- HP текст над дистанцией
+                        hpText.Visible = true
+                        local hum = player.Character:FindFirstChild("Humanoid")
+                        hpText.Text = hum and ("HP: "..math.floor(hum.Health)) or "HP: ?"
+                        centerText(hpText, headPos.X, headPos.Y - 72)
                     else
                         distText.Visible = false
                         centerText(nameText, headPos.X, headPos.Y - 32)
+                        hpText.Visible = false
                     end
                 else
                     nameText.Visible = false
                     distText.Visible = false
+                    hpText.Visible = false
                 end
             else
                 box.Visible = false
@@ -649,6 +780,7 @@ RunService.RenderStepped:Connect(function()
                 healthBar.Visible = false
                 nameText.Visible = false
                 distText.Visible = false
+                hpText.Visible = false
             end
         end
     end
@@ -738,3 +870,268 @@ local function notification(text, time)
 end
 
 notification("Скрипт успешно загружен!", 3)
+
+local player = LocalPlayer
+local flying = false
+local flyConn = nil
+local flySpeed = 50
+
+function startFly()
+    if flying then return end
+    flying = true
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = character.HumanoidRootPart
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = true
+    end
+    local cam = workspace.CurrentCamera
+    local moveDir = Vector3.new()
+    flyConn = RunService.RenderStepped:Connect(function()
+        if not flying then return end
+        moveDir = Vector3.new()
+        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + cam.CFrame.UpVector end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - cam.CFrame.UpVector end
+        if moveDir.Magnitude > 0 then
+            hrp.Velocity = moveDir.Unit * flySpeed
+        else
+            hrp.Velocity = Vector3.new(0,0,0)
+        end
+    end)
+end
+
+function stopFly()
+    if not flying then return end
+    flying = false
+    if flyConn then flyConn:Disconnect() end
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
+    end
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = false
+    end
+end
+
+-- Реакция на включение/выключение полёта
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        settings.flyEnabled = not settings.flyEnabled
+        if settings.flyEnabled then
+            flySpeed = settings.flySpeed
+            startFly()
+        else
+            stopFly()
+        end
+    end
+end)
+
+-- Автоматически применять flySpeed при изменении слайдера
+RunService.RenderStepped:Connect(function()
+    if flying then
+        flySpeed = settings.flySpeed
+    end
+end)
+
+-- // No Spread & No Recoil для Counter Blox
+local noSpreadHook = nil
+local noRecoilHook = nil
+function enableNoSpread()
+    if noSpreadHook then return end
+    noSpreadHook = hookmetamethod(game, "__namecall", function(self, ...)
+        local args = {...}
+        if not checkcaller() and tostring(self) == "HitPart" and getnamecallmethod() == "FireServer" then
+            if args[3] and typeof(args[3]) == "Vector3" then
+                local cam = workspace.CurrentCamera
+                args[3] = (cam.CFrame.LookVector).Unit
+                return noSpreadHook(self, unpack(args))
+            end
+        end
+        return noSpreadHook(self, ...)
+    end)
+end
+function disableNoSpread()
+    if noSpreadHook then
+        -- невозможно убрать hookmetamethod, но можно отключить через toggle
+        noSpreadHook = nil
+    end
+end
+function enableNoRecoil()
+    if noRecoilHook then return end
+    local mt = getrawmetatable(game)
+    local oldIndex = mt.__newindex
+    setreadonly(mt, false)
+    mt.__newindex = function(t, k, v)
+        if tostring(t) == "CurrentCamera" and (k == "CFrame" or k == "CameraSubject") then
+            return oldIndex(t, k, v)
+        end
+        if k == "CameraOffset" or k == "CameraKick" then
+            return
+        end
+        return oldIndex(t, k, v)
+    end
+    setreadonly(mt, true)
+    noRecoilHook = true
+end
+function disableNoRecoil()
+    if noRecoilHook then
+        -- невозможно убрать newindex hook без перезапуска, но можно отключить через toggle
+        noRecoilHook = nil
+    end
+end
+
+-- Реакция на включение/выключение NoSpread/NoRecoil
+RunService.RenderStepped:Connect(function()
+    if settings.noSpread then
+        enableNoSpread()
+    end
+    if settings.noRecoil then
+        enableNoRecoil()
+    end
+end)
+
+-- // Увеличение хитбокса головы (Head) только для других игроков (Counter Blox)
+local defaultHeadProps = {}
+RunService.RenderStepped:Connect(function()
+    if settings.headHitboxEnlarger then
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                local head = v.Character.Head
+                pcall(function()
+                    if not defaultHeadProps[head] then
+                        defaultHeadProps[head] = {
+                            Size = head.Size,
+                            Transparency = head.Transparency,
+                            BrickColor = head.BrickColor,
+                            Material = head.Material,
+                            CanCollide = head.CanCollide
+                        }
+                    end
+                    head.Size = Vector3.new(settings.headHitboxSize, settings.headHitboxSize, settings.headHitboxSize)
+                    head.Transparency = 0.7
+                    head.BrickColor = BrickColor.new("Really blue")
+                    head.Material = Enum.Material.Neon
+                    head.CanCollide = false
+                end)
+            end
+        end
+    else
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                local head = v.Character.Head
+                if defaultHeadProps[head] then
+                    pcall(function()
+                        head.Size = defaultHeadProps[head].Size
+                        head.Transparency = defaultHeadProps[head].Transparency
+                        head.BrickColor = defaultHeadProps[head].BrickColor
+                        head.Material = defaultHeadProps[head].Material
+                        head.CanCollide = defaultHeadProps[head].CanCollide
+                    end)
+                    defaultHeadProps[head] = nil
+                end
+            end
+        end
+    end
+end)
+
+-- // FOV Circle Drawing
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = false
+fovCircle.Color = Color3.fromRGB(0, 255, 255)
+fovCircle.Thickness = 2
+fovCircle.Filled = false
+fovCircle.Transparency = 0.7
+
+RunService.RenderStepped:Connect(function()
+    if settings.aimbotEnabled then
+        fovCircle.Visible = true
+        fovCircle.Position = Vector2.new(Mouse.X, Mouse.Y)
+        fovCircle.Radius = settings.aimbotFOV
+        fovCircle.Color = Color3.fromRGB(0, 255, 255)
+    else
+        fovCircle.Visible = false
+    end
+end)
+
+-- // Функция получения мировой позиции кости (Bone)
+local function getWorldPosition(bone)
+    local current = bone
+    local worldCFrame = bone.CFrame
+    local boneoffset = bone.CFrame
+    while current.Parent and current.Parent:IsA("Bone") do
+        current = current.Parent
+        worldCFrame = current.CFrame * worldCFrame
+    end
+    boneoffset = worldCFrame
+    if current.Parent and current.Parent:IsA("BasePart") then
+        worldCFrame = current.CFrame * worldCFrame
+        worldCFrame = current.Parent.CFrame * worldCFrame
+    end
+    return worldCFrame.Position, boneoffset
+end
+
+local skeletonBones = {
+    {"Head", "UpperTorso"},
+    {"UpperTorso", "LowerTorso"},
+    {"UpperTorso", "LeftUpperArm"},
+    {"UpperTorso", "RightUpperArm"},
+    {"LeftUpperArm", "LeftLowerArm"},
+    {"LeftLowerArm", "LeftHand"},
+    {"RightUpperArm", "RightLowerArm"},
+    {"RightLowerArm", "RightHand"},
+    {"LowerTorso", "LeftUpperLeg"},
+    {"LowerTorso", "RightUpperLeg"},
+    {"LeftUpperLeg", "LeftLowerLeg"},
+    {"LeftLowerLeg", "LeftFoot"},
+    {"RightUpperLeg", "RightLowerLeg"},
+    {"RightLowerLeg", "RightFoot"},
+}
+
+local skeletonLines = {}
+RunService.RenderStepped:Connect(function()
+    for _,lines in pairs(skeletonLines) do
+        for _,line in pairs(lines) do
+            if line and line.Remove then line:Remove() end
+        end
+    end
+    skeletonLines = {}
+    if not settings.espEnabled or not settings.skeletonEnabled then return end
+    for _,player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local lines = {}
+            for _,pair in ipairs(skeletonBones) do
+                local boneA = player.Character:FindFirstChild(pair[1], true)
+                local boneB = player.Character:FindFirstChild(pair[2], true)
+                local posA, posB
+                if boneA and boneA:IsA("Bone") then
+                    posA = Camera:WorldToViewportPoint(getWorldPosition(boneA))
+                elseif boneA and boneA:IsA("BasePart") then
+                    posA = Camera:WorldToViewportPoint(boneA.Position)
+                end
+                if boneB and boneB:IsA("Bone") then
+                    posB = Camera:WorldToViewportPoint(getWorldPosition(boneB))
+                elseif boneB and boneB:IsA("BasePart") then
+                    posB = Camera:WorldToViewportPoint(boneB.Position)
+                end
+                if posA and posB and posA.Z > 0 and posB.Z > 0 then
+                    local line = Drawing.new("Line")
+                    line.From = Vector2.new(posA.X, posA.Y)
+                    line.To = Vector2.new(posB.X, posB.Y)
+                    line.Color = Color3.fromRGB(0,255,0)
+                    line.Thickness = 2
+                    line.Transparency = 0.8
+                    line.Visible = true
+                    table.insert(lines, line)
+                end
+            end
+            skeletonLines[player] = lines
+        end
+    end
+end)
